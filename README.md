@@ -1,73 +1,304 @@
-# Welcome to your Lovable project
+# PM Internship Recommendation Engine
 
-## Project info
+A full-stack web application module that integrates with the PM Internship Scheme website to provide AI-based internship recommendations.
 
-**URL**: https://lovable.dev/projects/1624497d-c510-4860-adb6-4727a1639d55
+## 🏛️ Government Integration Features
 
-## How can I edit this code?
+- **Seamless Integration**: Designed to integrate with existing PM scheme website
+- **Database Connectivity**: Connects to existing PM scheme MongoDB database
+- **User Tracking**: Uses existing `userId` from PM scheme for user monitoring
+- **Government Styling**: Matches official PM scheme design (Navy Blue, Saffron, Government branding)
 
-There are several ways of editing your application.
+## 🚀 Tech Stack
 
-**Use Lovable**
+### Frontend (Current - Lovable)
+- React 18 + TypeScript
+- Tailwind CSS with Government theme
+- Shadcn/ui components
+- Responsive design
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/1624497d-c510-4860-adb6-4727a1639d55) and start prompting.
+### Backend (To be implemented outside Lovable)
+- Node.js + Express + TypeScript
+- Prisma ORM for database management
+- MongoDB connection to existing PM scheme DB
+- RESTful API with proper error handling
 
-Changes made via Lovable will be committed automatically to this repo.
+## 📁 Project Structure
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+├── components/
+│   ├── ui/                     # Shadcn UI components
+│   ├── Navigation.tsx          # Government-styled header
+│   ├── HeroSection.tsx         # Landing page hero
+│   ├── ProfileForm.tsx         # Candidate profile form
+│   ├── RecommendationResults.tsx # Results display
+│   ├── AuthForm.tsx            # Authentication (if needed)
+│   └── AdminDashboard.tsx      # Admin analytics
+├── pages/
+│   ├── Index.tsx               # Landing page
+│   ├── Dashboard.tsx           # User dashboard
+│   └── NotFound.tsx            # 404 page
+├── services/
+│   └── api.ts                  # API service layer
+├── types/
+│   └── api.ts                  # TypeScript interfaces
+└── App.tsx                     # Main app component
 ```
 
-**Edit a file directly in GitHub**
+## 🎨 Design System
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Government Theme Colors
+- **Primary**: Navy Blue (#1e3a8a) - Official government blue
+- **Accent**: Saffron (#ff8f00) - Government accent color
+- **Background**: White/Light Gray
+- **Typography**: Roboto font family
 
-**Use GitHub Codespaces**
+### Component Styling
+- Clean, professional government website aesthetic
+- Accessible color contrasts
+- Mobile-responsive design
+- Consistent spacing and typography
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🔧 Backend Implementation Guide
 
-## What technologies are used for this project?
+### 1. Database Schema (Prisma)
 
-This project is built with:
+```prisma
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
 
-## How can I deploy this project?
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @unique // From existing PM scheme DB
+  name      String
+  email     String   @unique
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  profiles  UserProfile[]
+  
+  @@map("users")
+}
 
-Simply open [Lovable](https://lovable.dev/projects/1624497d-c510-4860-adb6-4727a1639d55) and click on Share -> Publish.
+model UserProfile {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   
+  education         String
+  skills            String[]
+  preferredLocation String
+  interests         String[]
+  cgpa              Float?
+  experience        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  user              User     @relation(fields: [userId], references: [userId])
+  
+  @@map("user_profiles")
+}
 
-## Can I connect a custom domain to my Lovable project?
+model InternshipSubmission {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String
+  profileData       Json
+  recommendations   Json
+  submittedAt       DateTime @default(now())
+  
+  @@map("internship_submissions")
+}
+```
 
-Yes, you can!
+### 2. Environment Variables
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```env
+# Database
+DATABASE_URL="mongodb+srv://username:password@cluster.mongodb.net/pm_scheme_db"
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+# API Configuration
+PORT=3001
+NODE_ENV=production
+
+# ML Service
+ML_SERVICE_URL="http://localhost:5000"
+ML_SERVICE_API_KEY="your-ml-api-key"
+
+# CORS
+FRONTEND_URL="https://your-pm-scheme-website.gov.in"
+```
+
+### 3. Express Server Setup
+
+```typescript
+// src/app.ts
+import express from 'express';
+import cors from 'cors';
+import { PrismaClient } from '@prisma/client';
+import { recommendationRoutes } from './routes/recommendations';
+import { adminRoutes } from './routes/admin';
+import { userRoutes } from './routes/users';
+
+const app = express();
+const prisma = new PrismaClient();
+
+// Middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true
+}));
+app.use(express.json());
+
+// Routes
+app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/users', userRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+export default app;
+```
+
+### 4. ML Integration Service
+
+```typescript
+// src/services/mlService.ts
+import axios from 'axios';
+
+interface MLRequest {
+  education: string;
+  skills: string[];
+  location: string;
+  interests: string[];
+  cgpa?: number;
+}
+
+export class MLService {
+  private baseURL = process.env.ML_SERVICE_URL;
+  private apiKey = process.env.ML_SERVICE_API_KEY;
+
+  async getRecommendations(request: MLRequest) {
+    try {
+      const response = await axios.post(
+        `${this.baseURL}/recommend`,
+        request,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000 // 30 seconds
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('ML Service Error:', error);
+      throw new Error('Failed to get recommendations from ML service');
+    }
+  }
+}
+```
+
+## 🔌 Integration Steps
+
+### 1. Connect to Existing PM Scheme Database
+- Use existing MongoDB connection string
+- Map existing user IDs to new recommendation system
+- Ensure data privacy and security compliance
+
+### 2. Deploy Backend Service
+```bash
+# Install dependencies
+npm install express prisma @prisma/client cors helmet
+
+# Setup Prisma
+npx prisma generate
+npx prisma db push
+
+# Start server
+npm run start
+```
+
+### 3. Frontend Integration
+- Update API base URL in `src/services/api.ts`
+- Configure CORS for your domain
+- Test API connectivity
+
+### 4. ML Service Integration
+- Deploy Python Flask/FastAPI service
+- Configure API endpoints
+- Test recommendation pipeline
+
+## 📊 API Endpoints
+
+### User Endpoints
+- `POST /api/recommendations` - Get internship recommendations
+- `GET /api/users/:userId/history` - Get user submission history
+- `POST /api/users/profile` - Save user profile
+
+### Admin Endpoints
+- `GET /api/admin/dashboard` - Get dashboard analytics
+- `GET /api/admin/submissions` - Get all submissions (paginated)
+- `GET /api/admin/export` - Export data as CSV
+
+## 🚀 Deployment
+
+### Production Checklist
+- [ ] Environment variables configured
+- [ ] Database connection tested
+- [ ] ML service integration tested
+- [ ] CORS properly configured
+- [ ] Security headers implemented
+- [ ] Rate limiting enabled
+- [ ] Logging configured
+- [ ] Health checks working
+
+### Hosting Recommendations
+- **Backend**: AWS EC2, Google Cloud Run, or Heroku
+- **Database**: MongoDB Atlas or existing PM scheme infrastructure
+- **Frontend**: Integrate with existing PM scheme website
+- **ML Service**: Separate containerized service
+
+## 🔒 Security Considerations
+
+- Input validation and sanitization
+- Rate limiting on API endpoints
+- Secure database connections
+- Data encryption at rest and in transit
+- Regular security audits
+- Compliance with government data policies
+
+## 📈 Monitoring & Analytics
+
+- User interaction tracking
+- API performance monitoring
+- Error logging and alerting
+- Database performance metrics
+- ML service response times
+
+## 🤝 Contributing
+
+1. Follow government coding standards
+2. Test all integrations thoroughly
+3. Document API changes
+4. Ensure accessibility compliance
+5. Maintain security best practices
+
+## 📄 License
+
+This project is developed for the Government of India PM Internship Scheme and follows applicable government software policies.
+
+---
+
+**Note**: This frontend is built with Lovable (React + TypeScript). For the complete full-stack implementation with Node.js + Express backend, deploy the backend service separately and integrate with this frontend through the API service layer.

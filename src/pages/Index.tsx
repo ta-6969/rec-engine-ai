@@ -196,9 +196,8 @@ const Index = () => {
         return (
           <div>
             <Navigation 
-              currentPage="recommendations" 
-              isAuthenticated={isAuthenticated}
-              onNavigate={handleNavigation}
+              user={isAuthenticated ? { id: "1", name: "User", email: "user@example.com" } : null}
+              onLogin={() => setCurrentState("auth")}
               onLogout={handleLogout}
             />
             <RecommendationResults 
@@ -227,9 +226,8 @@ const Index = () => {
   const renderLandingPage = () => (
     <div className="min-h-screen bg-background">
       <Navigation 
-        currentPage="home" 
-        isAuthenticated={isAuthenticated}
-        onNavigate={handleNavigation}
+        user={isAuthenticated ? { id: "1", name: "User", email: "user@example.com" } : null}
+        onLogin={() => setCurrentState("auth")}
         onLogout={handleLogout}
       />
       

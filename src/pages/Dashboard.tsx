@@ -84,9 +84,8 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation 
-        currentPage="dashboard" 
-        isAuthenticated={true}
-        onNavigate={(page) => console.log(`Navigate to ${page}`)}
+        user={{ id: "1", name: "John Doe", email: "john@example.com" }}
+        onAdminAccess={() => console.log("Admin access")}
         onLogout={() => console.log("Logout")}
       />
 
